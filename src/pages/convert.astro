@@ -1,0 +1,9 @@
+---
+import { ConvertTool } from '../components/tools/ConvertTool';
+import ToolPage from '../layouts/ToolPage.astro';
+import { tools } from '../tools';
+---
+
+<ToolPage tool={tools.convert}>
+  <ConvertTool client:load />
+</ToolPage>

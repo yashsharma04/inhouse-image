@@ -1,0 +1,77 @@
+---
+import Base from '../layouts/Base.astro';
+import { site } from '../site';
+
+const credits = [
+  { name: 'heic-decode', license: 'ISC', url: 'https://github.com/catdad-experiments/heic-decode' },
+  { name: 'libheif-js', license: 'LGPL-3.0', url: 'https://github.com/catdad-experiments/libheif-js' },
+  { name: 'libheif', license: 'LGPL-3.0', url: 'https://github.com/strukturag/libheif' },
+  { name: 'fflate', license: 'MIT', url: 'https://github.com/101arrowz/fflate' },
+];
+---
+
+<Base
+  title={`How ${site.name} keeps your files private`}
+  description={`${site.name} processes images entirely in your browser. Here's how it works and how to verify that nothing is uploaded.`}
+>
+  <article class="container prose">
+    <h1>How {site.name} works</h1>
+    <p class="lead">
+      {site.name} converts, compresses, and resizes photos entirely in your browser. Your files are never uploaded,
+      stored, or seen by anyone.
+    </p>
+
+    <h2>What happens to your file</h2>
+    <p>
+      When you choose a photo, your browser reads it from your disk into memory. The tool decodes it right there,
+      resizes and re-encodes it with the canvas API (and a HEIC decoder for iPhone photos), and hands the result back
+      as a download. When you close the tab, it's gone.
+    </p>
+
+    <h2>How to check for yourself</h2>
+    <ul>
+      <li>
+        <strong>Go offline.</strong> Load the convert page, turn off your wifi, then use the tool. It keeps working
+        because it never needed a server.
+      </li>
+      <li>
+        <strong>Watch the network.</strong> Open your browser's developer tools, go to the Network tab, and process a
+        file. You'll see no request carrying your photo.
+      </li>
+      <li>
+        <strong>Read the security policy.</strong> Every page sends a Content-Security-Policy that only allows
+        connections back to this site, plus cookieless visit counting. Your browser enforces it even if the code tried
+        to send your file elsewhere.
+      </li>
+    </ul>
+
+    <h2>Analytics</h2>
+    <p>
+      We count page visits with Cloudflare Web Analytics, which uses no cookies and doesn't track you across sites. It
+      never sees your files.
+    </p>
+
+    <h2>Open source</h2>
+    <p>
+      {site.name} is free software under the MIT license. The HEIC decoder is
+      <a href="https://github.com/strukturag/libheif" rel="noopener">libheif</a>, used as a WebAssembly module under
+      LGPL-3.0. The full source code is at
+      <a href={site.sourceUrl} rel="noopener">{site.sourceUrl.replace('https://', '')}</a>.
+    </p>
+    <p>It is built on these open-source projects:</p>
+    <ul>
+      {
+        credits.map((credit) => (
+          <li>
+            <a href={credit.url} rel="noopener">
+              {credit.name}
+            </a>{' '}
+            ({credit.license})
+          </li>
+        ))
+      }
+    </ul>
+
+    <p>Made by <a href={site.studioUrl} rel="noopener">{site.studio}</a>.</p>
+  </article>
+</Base>
