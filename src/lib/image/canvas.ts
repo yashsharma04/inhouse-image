@@ -2,7 +2,7 @@ import decodeHeic from 'heic-decode';
 import { IMAGE_MIME, type ImageFormat, type OutputFormat } from './detect';
 import { ImageToolError } from './errors';
 import type { ConvertFn } from './process';
-import { targetSize } from './resize';
+import { orientedSize, targetSize, type Rotation } from './resize';
 
 function asErrorCause(error: unknown): ErrorOptions | undefined {
   return error instanceof Error ? { cause: error } : undefined;
@@ -36,13 +36,20 @@ async function decodeToBitmap(bytes: Uint8Array, format: ImageFormat, fileName: 
 
 async function encodeBitmap(
   bitmap: ImageBitmap,
-  width: number,
-  height: number,
+  destWidth: number,
+  destHeight: number,
+  rotation: Rotation,
   format: OutputFormat,
   quality: number,
 ): Promise<Uint8Array> {
-  const canvas = new OffscreenCanvas(width, height);
-  requireContext(canvas).drawImage(bitmap, 0, 0, width, height);
+  const canvas = new OffscreenCanvas(destWidth, destHeight);
+  const context = requireContext(canvas);
+  const oriented = orientedSize(bitmap.width, bitmap.height, rotation);
+  const scale = destWidth / oriented.width;
+  context.translate(destWidth / 2, destHeight / 2);
+  context.rotate((rotation * Math.PI) / 180);
+  context.scale(scale, scale);
+  context.drawImage(bitmap, -bitmap.width / 2, -bitmap.height / 2);
   bitmap.close();
   const blob = await canvas.convertToBlob({
     type: IMAGE_MIME[format],
@@ -53,9 +60,22 @@ async function encodeBitmap(
 
 export const convertOnCanvas: ConvertFn = async (file, plan) => {
   const bitmap = await decodeToBitmap(file.bytes, plan.inputFormat, file.name);
-  const sourceWidth = bitmap.width;
-  const sourceHeight = bitmap.height;
-  const size = targetSize(sourceWidth, sourceHeight, plan.maxEdge);
-  const bytes = await encodeBitmap(bitmap, size.width, size.height, plan.outputFormat, plan.quality);
-  return { bytes, width: size.width, height: size.height, sourceWidth, sourceHeight };
+  const rotation = file.rotation ?? 0;
+  const oriented = orientedSize(bitmap.width, bitmap.height, rotation);
+  const size = targetSize(oriented.width, oriented.height, plan.maxEdge);
+  const bytes = await encodeBitmap(
+    bitmap,
+    size.width,
+    size.height,
+    rotation,
+    plan.outputFormat,
+    plan.quality,
+  );
+  return {
+    bytes,
+    width: size.width,
+    height: size.height,
+    sourceWidth: oriented.width,
+    sourceHeight: oriented.height,
+  };
 };

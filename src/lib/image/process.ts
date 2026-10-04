@@ -2,16 +2,27 @@ import { zipFiles } from '../zip';
 import { detectFormat, type OutputFormat } from './detect';
 import { ImageToolError } from './errors';
 import { mimeOfFileName, outputFileName, uniqueNames } from './names';
-import { decideOutputFormat, isAlreadyOptimized } from './resize';
+import { decideOutputFormat, isAlreadyOptimized, type Rotation } from './resize';
+
+export const QUALITY_LEVELS = ['light', 'recommended', 'strong'] as const;
+export type QualityLevel = (typeof QUALITY_LEVELS)[number];
+
+export const QUALITY_VALUE: Record<QualityLevel, number> = {
+  light: 0.92,
+  recommended: 0.8,
+  strong: 0.55,
+};
 
 export interface ImageFile {
   name: string;
   bytes: Uint8Array;
+  rotation?: Rotation;
 }
 
 export interface ProcessOptions {
   format: OutputFormat | 'keep';
   maxEdge: number | null;
+  quality?: QualityLevel;
 }
 
 export interface ConvertedImage {
@@ -40,8 +51,6 @@ export interface ProcessResult {
   count: number;
 }
 
-export const ENCODE_QUALITY = 0.8;
-
 export async function processImages(
   files: ImageFile[],
   options: ProcessOptions,
@@ -65,14 +74,16 @@ export async function processImages(
     }
 
     const outputFormat = decideOutputFormat(inputFormat, options.format);
+    const quality = QUALITY_VALUE[options.quality ?? 'recommended'];
     const converted = await convert(file, {
       inputFormat,
       outputFormat,
       maxEdge: options.maxEdge,
-      quality: ENCODE_QUALITY,
+      quality,
     });
     const resized =
       converted.width !== converted.sourceWidth || converted.height !== converted.sourceHeight;
+    const rotated = (file.rotation ?? 0) !== 0;
 
     if (
       isAlreadyOptimized(
@@ -81,6 +92,7 @@ export async function processImages(
         resized,
         converted.bytes.byteLength,
         file.bytes.byteLength,
+        rotated,
       )
     ) {
       throw new ImageToolError(

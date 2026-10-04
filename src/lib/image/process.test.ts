@@ -107,4 +107,33 @@ describe('processImages', () => {
     );
     expect(error).toMatchObject({ code: 'empty-result' });
   });
+
+  it('passes the chosen quality and each file rotation to convert', async () => {
+    const seen: Array<{ quality: number; rotation: number | undefined }> = [];
+    await processImages(
+      [{ name: 'photo.jpg', bytes: jpegHeader(), rotation: 90 }],
+      { format: 'jpeg', maxEdge: null, quality: 'strong' },
+      async (file, plan) => {
+        seen.push({ quality: plan.quality, rotation: file.rotation });
+        return convertSmaller(file, plan);
+      },
+    );
+    expect(seen).toEqual([{ quality: 0.55, rotation: 90 }]);
+  });
+
+  it('does not treat a rotated file as already optimized', async () => {
+    const original = jpegHeader();
+    const result = await processImages(
+      [{ name: 'sideways.jpg', bytes: original, rotation: 90 }],
+      { format: 'keep', maxEdge: null },
+      async () => ({
+        bytes: new Uint8Array(original.byteLength),
+        width: 10,
+        height: 8,
+        sourceWidth: 10,
+        sourceHeight: 8,
+      }),
+    );
+    expect(result.fileName).toBe('sideways.jpg');
+  });
 });

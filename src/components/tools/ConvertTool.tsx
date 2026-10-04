@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { formatBytes, formatLabel, readImageFile, type ListedImage } from '../../lib/files';
 import type { OutputFormat } from '../../lib/image/detect';
-import type { ProcessOptions, ProcessResult } from '../../lib/image/process';
+import type { ProcessOptions, ProcessResult, QualityLevel } from '../../lib/image/process';
+import { nextRotation, type Rotation } from '../../lib/image/resize';
 import { imageJobs } from '../../workers';
 import { DropZone } from '../DropZone';
 import { ErrorMessage } from '../ErrorMessage';
@@ -12,9 +13,15 @@ import { useWarmWorkers } from '../useWarmWorkers';
 
 const FORMATS: { value: ProcessOptions['format']; title: string; hint: string }[] = [
   { value: 'keep', title: 'Same as original', hint: 'HEIC becomes JPEG. Other formats stay as they are.' },
-  { value: 'jpeg', title: 'JPEG', hint: 'Best for photos. Re-encoded at quality 0.8.' },
-  { value: 'webp', title: 'WebP', hint: 'Usually smaller than JPEG at similar quality.' },
-  { value: 'png', title: 'PNG', hint: 'Lossless. Can be larger than the original.' },
+  { value: 'jpeg', title: 'JPEG', hint: 'Best for photos. Uses the quality you pick below.' },
+  { value: 'webp', title: 'WebP', hint: 'Usually smaller than JPEG at the same quality.' },
+  { value: 'png', title: 'PNG', hint: 'Lossless. Quality does not apply, and the file can grow.' },
+];
+
+const QUALITIES: { value: QualityLevel; title: string; hint: string }[] = [
+  { value: 'light', title: 'Light', hint: 'Highest quality. Smallest size savings.' },
+  { value: 'recommended', title: 'Recommended', hint: 'Good quality for sharing. Usually a clear saving.' },
+  { value: 'strong', title: 'Strong', hint: 'Smallest file. Photos become noticeably softer.' },
 ];
 
 const SIZES: { value: number | null; title: string; hint: string }[] = [
@@ -29,6 +36,7 @@ let nextId = 0;
 
 interface ListedItem extends ListedImage {
   id: string;
+  rotation: Rotation;
 }
 
 function resultTitle(result: ProcessResult): string {
@@ -46,6 +54,7 @@ export function ConvertTool() {
   const [adding, setAdding] = useState(false);
   const [format, setFormat] = useState<ProcessOptions['format']>('keep');
   const [maxEdge, setMaxEdge] = useState<number | null>(null);
+  const [quality, setQuality] = useState<QualityLevel>('recommended');
   const convert = useAction<ProcessResult>();
 
   const updateItems = (next: ListedItem[]) => {
@@ -59,7 +68,7 @@ export function ConvertTool() {
     const errors: string[] = [];
     for (const file of files) {
       try {
-        added.push({ id: `file-${nextId++}`, ...(await readImageFile(file)) });
+        added.push({ id: `file-${nextId++}`, rotation: 0, ...(await readImageFile(file)) });
       } catch (error) {
         errors.push(toUserMessage(error));
       }
@@ -71,10 +80,14 @@ export function ConvertTool() {
 
   const runConvert = () =>
     convert.run(async () => {
-      const files = items.map(({ name, bytes }) => ({ name, bytes: bytes.slice() }));
+      const files = items.map(({ name, bytes, rotation }) => ({
+        name,
+        bytes: bytes.slice(),
+        rotation,
+      }));
       return imageJobs.run(
         'process',
-        { files, options: { format, maxEdge } },
+        { files, options: { format, maxEdge, quality } },
         files.map((file) => file.bytes.buffer as ArrayBuffer),
       );
     });
@@ -123,9 +136,25 @@ export function ConvertTool() {
                 <p className="file-row__name">{item.name}</p>
                 <p className="file-row__meta">
                   {formatLabel(item.format)} · {formatBytes(item.size)}
+                  {item.rotation !== 0 && ` · ${item.rotation}°`}
                 </p>
               </div>
               <div className="file-row__actions">
+                <button
+                  type="button"
+                  className="icon-button"
+                  aria-label={`Rotate ${item.name}`}
+                  disabled={working}
+                  onClick={() =>
+                    updateItems(
+                      items.map((other) =>
+                        other.id === item.id ? { ...other, rotation: nextRotation(other.rotation) } : other,
+                      ),
+                    )
+                  }
+                >
+                  ↻
+                </button>
                 <button
                   type="button"
                   className="icon-button"
@@ -151,6 +180,27 @@ export function ConvertTool() {
               checked={format === option.value}
               onChange={() => {
                 setFormat(option.value as OutputFormat | 'keep');
+                convert.reset();
+              }}
+            />
+            <span>
+              <strong>{option.title}</strong>
+              <span className="option__hint">{option.hint}</span>
+            </span>
+          </label>
+        ))}
+      </fieldset>
+
+      <fieldset className="options" disabled={working || format === 'png'}>
+        <legend className="options__legend">Quality</legend>
+        {QUALITIES.map((option) => (
+          <label key={option.value} className="option">
+            <input
+              type="radio"
+              name="quality"
+              checked={quality === option.value}
+              onChange={() => {
+                setQuality(option.value);
                 convert.reset();
               }}
             />

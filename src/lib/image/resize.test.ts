@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { decideOutputFormat, isAlreadyOptimized, targetSize } from './resize';
+import { decideOutputFormat, isAlreadyOptimized, nextRotation, orientedSize, targetSize } from './resize';
 
 describe('targetSize', () => {
   it('leaves the size unchanged when no max edge is set', () => {
@@ -34,5 +34,24 @@ describe('isAlreadyOptimized', () => {
     expect(isAlreadyOptimized('jpeg', 'webp', false, 1000, 900)).toBe(false);
     expect(isAlreadyOptimized('jpeg', 'jpeg', true, 1000, 900)).toBe(false);
     expect(isAlreadyOptimized('heic', 'jpeg', false, 1000, 900)).toBe(false);
+  });
+
+  it('is never true when the image was rotated', () => {
+    expect(isAlreadyOptimized('jpeg', 'jpeg', false, 1000, 900, true)).toBe(false);
+  });
+});
+
+describe('orientedSize', () => {
+  it('swaps sides for a quarter turn', () => {
+    expect(orientedSize(4000, 3000, 90)).toEqual({ width: 3000, height: 4000 });
+    expect(orientedSize(4000, 3000, 270)).toEqual({ width: 3000, height: 4000 });
+    expect(orientedSize(4000, 3000, 180)).toEqual({ width: 4000, height: 3000 });
+  });
+});
+
+describe('nextRotation', () => {
+  it('steps 90 degrees and wraps', () => {
+    expect(nextRotation(0)).toBe(90);
+    expect(nextRotation(270)).toBe(0);
   });
 });

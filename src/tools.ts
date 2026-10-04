@@ -45,7 +45,7 @@ export const tools = {
     promise: 'Convert, compress, and resize. Nothing is uploaded.',
     steps: [
       'Drop one or more photos onto the page.',
-      'Pick an output format and an optional long-edge size.',
+      'Pick a format, a quality level, and an optional long-edge size. Rotate any photo that is sideways.',
       'Click Convert and download the result. Several files come back as a zip.',
     ],
     faqs: [
@@ -63,7 +63,11 @@ export const tools = {
       {
         question: 'How does compression work?',
         answer:
-          'JPEG and WebP are re-encoded at quality 0.8. PNG stays lossless. If you keep the original format, do not resize, and the new file is not smaller, we leave it alone and tell you.',
+          'JPEG and WebP use the quality you pick: Light, Recommended, or Strong. PNG stays lossless. Re-encoding also drops location and camera metadata. If you keep the original format, do not resize or rotate, and the new file is not smaller, we leave it alone and tell you.',
+      },
+      {
+        question: 'Can I rotate a photo?',
+        answer: 'Yes. Use the rotate button on each file. It turns 90° at a time.',
       },
       {
         question: 'Will resizing upscale a small photo?',

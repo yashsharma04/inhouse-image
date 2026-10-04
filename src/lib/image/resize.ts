@@ -27,6 +27,22 @@ export function isAlreadyOptimized(
   resized: boolean,
   outputSize: number,
   originalSize: number,
+  rotated = false,
 ): boolean {
-  return input === output && !resized && outputSize >= originalSize;
+  return input === output && !resized && !rotated && outputSize >= originalSize;
+}
+
+export type Rotation = 0 | 90 | 180 | 270;
+
+export function nextRotation(current: Rotation): Rotation {
+  return ((current + 90) % 360) as Rotation;
+}
+
+export function orientedSize(
+  width: number,
+  height: number,
+  rotation: Rotation,
+): { width: number; height: number } {
+  if (rotation === 90 || rotation === 270) return { width: height, height: width };
+  return { width, height };
 }

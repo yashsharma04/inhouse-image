@@ -47,10 +47,11 @@ describe('ConvertTool', () => {
     expect(button('Convert images')).toBeDisabled();
   });
 
-  it('defaults to keeping the original format and size', async () => {
+  it('defaults to keeping the original format, size, and recommended quality', async () => {
     await renderWithFile();
     expect(screen.getByRole('radio', { name: /Same as original/ })).toBeChecked();
     expect(screen.getByRole('radio', { name: /Original size/ })).toBeChecked();
+    expect(screen.getByRole('radio', { name: /Recommended/ })).toBeChecked();
   });
 
   it('lists added files and rejects a non-image while keeping the valid ones', async () => {
@@ -67,13 +68,16 @@ describe('ConvertTool', () => {
     const user = await renderWithFile();
     await user.click(screen.getByRole('radio', { name: /WebP/ }));
     await user.click(screen.getByRole('radio', { name: /2048 px/ }));
+    await user.click(screen.getByRole('radio', { name: /Strong/ }));
+    await user.click(button('Rotate photo.jpg'));
+    expect(screen.getByText(/90°/)).toBeInTheDocument();
     await user.click(button('Convert images'));
 
     expect(run).toHaveBeenCalledWith(
       'process',
       {
-        files: [expect.objectContaining({ name: 'photo.jpg' })],
-        options: { format: 'webp', maxEdge: 2048 },
+        files: [expect.objectContaining({ name: 'photo.jpg', rotation: 90 })],
+        options: { format: 'webp', maxEdge: 2048, quality: 'strong' },
       },
       expect.any(Array),
     );
